@@ -39,3 +39,9 @@ def delete_existing_announcement(announcement_id: int, db: Session = Depends(get
     if db_announcement is None:
         raise HTTPException(status_code=404, detail="Announcement not found")
     return db_announcement
+
+#Endpoint para ultimos anuncios
+@router.get("/")
+def list_announcements(limit: int = 3, db: Session = Depends(get_db)):
+    q = db.query(Announcement).order_by(Announcement.created_at.desc()).limit(limit)
+    return [{"id": a.id, "title": a.title, "body": a.description, "created_at": a.created_at.isoformat()} for a in q]

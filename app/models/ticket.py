@@ -16,3 +16,7 @@ class Ticket(Base):
     fecha_termino_servicio = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+    #Update
+    id_managing_user = Column(Integer, index=True) 
+    id_status = Column(Integer, index=True)         
+    id_customer = Column(Integer, index=True)

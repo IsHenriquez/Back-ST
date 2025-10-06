@@ -1,7 +1,17 @@
 from fastapi import FastAPI
-from app.routers import ticket, user, tickets_priority, customer, tickets_status, announcement, nps, position, ticket_category, ticket_type, user_type, vehicle_brand, vehicle_model, vehicle
+from app.routers import ticket, user, tickets_priority, customer, tickets_status, announcement, nps, position, ticket_category, ticket_type, user_type, vehicle_brand, vehicle_model, vehicle, auth, assignments, schedule
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
+
+# CORS (en desarrollo usa "*"; en prod pon tu dominio/app)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],              # PROD: ["capacitor://localhost","http://localhost:5173","https://tu-dominio"]
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 app.include_router(ticket.router)
 app.include_router(user.router)
@@ -17,3 +27,7 @@ app.include_router(user_type.router)
 app.include_router(vehicle_brand.router)
 app.include_router(vehicle_model.router)
 app.include_router(vehicle.router)
+#Update
+app.include_router(assignments.router)
+app.include_router(auth.router)
+app.include_router(schedule.router)

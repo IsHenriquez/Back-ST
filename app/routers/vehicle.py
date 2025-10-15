@@ -1,44 +1,61 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.orm import Session
 from typing import List
-
-from app.schemas.vehicle import Vehicle, VehicleCreate, VehicleUpdate
-from app.crud.vehicle import get_vehicle, get_vehicles, create_vehicle, update_vehicle, delete_vehicle
+from fastapi import APIRouter, Depends, HTTPException, status, Query
+from sqlalchemy.orm import Session
 from app.core.database import get_db
+from app.crud.vehicle import get_vehicles, create_vehicle, update_vehicle, delete_vehicle, get_vehicle
+from app.schemas.vehicle import VehicleCreate, VehicleUpdate, VehicleOut
 
-router = APIRouter(
-    prefix="/vehicles",
-    tags=["vehicles"]
-)
+router = APIRouter(prefix="/vehicles", tags=["vehicles"])
 
-@router.get("/", response_model=List[Vehicle])
-def read_vehicles(skip: int = 0, limit: int = 10, db: Session = Depends(get_db)):
+
+@router.get("/", response_model=List[VehicleOut])
+def read_vehicles(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     return get_vehicles(db, skip=skip, limit=limit)
 
-@router.post("/", response_model=Vehicle)
-def create_new_vehicle(vehicle: VehicleCreate, db: Session = Depends(get_db)):
-    return create_vehicle(db, vehicle)
 
-@router.get("/{vehicle_id}", response_model=Vehicle)
+@router.get("/{vehicle_id}", response_model=VehicleOut)
 def read_vehicle(vehicle_id: int, db: Session = Depends(get_db)):
-    db_vehicle = get_vehicle(db, vehicle_id)
-    if db_vehicle is None:
+    vehicle = get_vehicle(db, vehicle_id)
+    if not vehicle:
         raise HTTPException(status_code=404, detail="Vehicle not found")
-    return db_vehicle
+    return vehicle
 
-@router.put("/{vehicle_id}", response_model=Vehicle)
-def update_existing_vehicle(vehicle_id: int, vehicle: VehicleUpdate, db: Session = Depends(get_db)):
-    db_vehicle = update_vehicle(db, vehicle_id, vehicle)
-    if db_vehicle is None:
-        raise HTTPException(status_code=404, detail="Vehicle not found")
-    return db_vehicle
 
-@router.delete("/{vehicle_id}", response_model=Vehicle)
-def delete_existing_vehicle(vehicle_id: int, db: Session = Depends(get_db)):
-    db_vehicle = delete_vehicle(db, vehicle_id)
-    if db_vehicle is None:
+@router.post("/", response_model=VehicleOut, status_code=status.HTTP_201_CREATED)
+def create_vehicle_endpoint(payload: VehicleCreate, db: Session = Depends(get_db)):
+    vals = payload.model_dump(exclude_unset=True)
+    
+    # Si viene 0, convertirlo a None para evitar error de foreign key
+    if vals.get("id_vehicle_model") == 0:
+        vals["id_vehicle_model"] = None
+    
+    # Recrear el schema con los valores corregidos
+    payload_fixed = VehicleCreate(**vals)
+    return create_vehicle(db, payload_fixed)
+
+
+@router.put("/{vehicle_id}", response_model=VehicleOut)
+def update_vehicle_endpoint(vehicle_id: int, payload: VehicleUpdate, db: Session = Depends(get_db)):
+    vals = payload.model_dump(exclude_unset=True)
+    
+    # Si viene 0, convertirlo a None
+    if vals.get("id_vehicle_model") == 0:
+        vals["id_vehicle_model"] = None
+    
+    payload_fixed = VehicleUpdate(**vals)
+    vehicle = update_vehicle(db, vehicle_id, payload_fixed)
+    if not vehicle:
         raise HTTPException(status_code=404, detail="Vehicle not found")
-    return db_vehicle
+    return vehicle
+
+
+@router.delete("/{vehicle_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_vehicle_endpoint(vehicle_id: int, db: Session = Depends(get_db)):
+    success = delete_vehicle(db, vehicle_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Vehicle not found")
+    return None
+
 
 
 @router.get("/assigned")

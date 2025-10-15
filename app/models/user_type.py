@@ -1,6 +1,7 @@
 from sqlalchemy import Column, Integer, String, DateTime
 from app.core.database import Base
 import datetime
+from sqlalchemy.orm import relationship
 
 class UserType(Base):
     __tablename__ = "users_type"
@@ -10,3 +11,5 @@ class UserType(Base):
     description = Column(String(255), nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+
+    users = relationship("User", back_populates="user_type")

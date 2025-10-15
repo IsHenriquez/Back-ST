@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from app.routers import ticket, user, tickets_priority, customer, tickets_status, announcement, nps, position, ticket_category, ticket_type, user_type, vehicle_brand, vehicle_model, vehicle, auth
+from app.routers import ticket, schedule, user, tickets_priority, customer, tickets_status, announcement, nps, position, ticket_category, ticket_type, user_type, vehicle_brand, vehicle_model, vehicle, auth
 from fastapi.middleware.cors import CORSMiddleware
 app = FastAPI()
 
@@ -18,6 +18,7 @@ app.include_router(vehicle_brand.router)
 app.include_router(vehicle_model.router)
 app.include_router(vehicle.router)
 app.include_router(auth.router)
+app.include_router(schedule.router)
 
 
 app.add_middleware(

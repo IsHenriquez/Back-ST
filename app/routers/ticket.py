@@ -103,18 +103,34 @@ def resolve_ticket(ticket_id: int, db: Session = Depends(get_db)):
 # CREAR / OBTENER / ACTUALIZAR / ELIMINAR (existente)
 # ======================================================
 
-@router.post("/", response_model=TicketSchema)
-def create_new_ticket(ticket: TicketCreate, db: Session = Depends(get_db)):
-    """
-    Normaliza ticket de creación:
-    - fecha_realizar_servicio: si no viene, usa ahora (UTC)
-    - fecha_termino_servicio: siempre None al crear
-    """
-    safe_payload = ticket.copy(update={
-        "fecha_realizar_servicio": ticket.fecha_realizar_servicio or datetime.utcnow(),
-        "fecha_termino_servicio": None,
-    })
-    return create_ticket(db, safe_payload)
+@router.post("/", response_model=TicketModel, status_code=status.HTTP_201_CREATED)
+def create_new_ticket(
+    ticket: TicketCreate,
+    db: Session = Depends(get_db),
+):
+    vals = ticket.model_dump(exclude_unset=True)
+
+    # Si front ya los manda, no los toques; si faltan, aplica fallback seguro:
+    if vals.get("id_managing_user") is None:
+        # último recurso: usa user_id si vino
+        if vals.get("user_id") is not None:
+            vals["id_managing_user"] = vals["user_id"]
+        else:
+            raise HTTPException(status_code=400, detail="id_managing_user requerido")
+
+    if vals.get("user_id") is None:
+        # si tu modelo exige user_id, usa el mismo manager como solicitante
+        vals["user_id"] = vals["id_managing_user"]
+
+    vals.setdefault("id_status", 1)
+    vals.setdefault("fecha_realizar_servicio", datetime.utcnow())
+    vals["fecha_termino_servicio"] = None
+
+    obj = create_ticket(db, vals)
+    if not obj:
+        raise HTTPException(status_code=400, detail="No se pudo crear el ticket")
+    return obj
+
 
 @router.get("/{ticket_id}", response_model=TicketSchema)
 def read_ticket(ticket_id: int, db: Session = Depends(get_db)):

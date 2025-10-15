@@ -27,7 +27,6 @@ class User(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     id_user_type = Column(Integer, ForeignKey("users_types.id"), nullable=True)  # CON ForeignKey
-    user_type = relationship("UserType", back_populates="users")
 
     tickets_managing = relationship(
         "Ticket",

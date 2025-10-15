@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
 
+from app.models.announcement import Announcement
 from app.schemas.announcement import Announcement, AnnouncementCreate, AnnouncementUpdate
 from app.crud.announcement import get_announcement, get_announcements, create_announcement, update_announcement, delete_announcement
 from app.core.database import get_db
@@ -14,6 +15,11 @@ router = APIRouter(
 @router.get("/", response_model=List[Announcement])
 def read_announcements(skip: int = 0, limit: int = 10, db: Session = Depends(get_db)):
     return get_announcements(db, skip=skip, limit=limit)
+
+@router.get("")
+def list_announcements(limit: int = Query(3, ge=1, le=20), db: Session = Depends(get_db)):
+    q = db.query(Announcement).order_by(Announcement.created_at.desc()).limit(limit)
+    return q.all() or []
 
 @router.post("/", response_model=Announcement)
 def create_new_announcement(announcement: AnnouncementCreate, db: Session = Depends(get_db)):

@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 import json
 import urllib.parse
-from app.schemas.ticket import Ticket, TicketCreate, TicketUpdate
+from app.schemas.ticket import Ticket, TicketCreate, TicketUpdate as TicketSchema
 from app.crud.ticket import (
 get_ticket, 
 get_tickets, 

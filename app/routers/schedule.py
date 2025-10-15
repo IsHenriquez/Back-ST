@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 from app.core.database import get_db
-from app.models.models import Ticket  # ajusta import al tuyo
+from app.models.ticket import Ticket  # ajusta import al tuyo
 
 router = APIRouter(prefix="/schedule", tags=["schedule"])
 

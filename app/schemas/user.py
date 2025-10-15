@@ -14,6 +14,7 @@ class UserBase(BaseModel):
     active: Optional[bool] = True
 
 class UserCreate(UserBase):
+    id_user_type: int  # Ahora obligatorio
     password: str
 
 class UserUpdate(UserBase):

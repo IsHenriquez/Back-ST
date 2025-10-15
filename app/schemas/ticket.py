@@ -12,11 +12,25 @@ class TicketBase(BaseModel):
     fecha_realizar_servicio: Optional[datetime] = None
     fecha_termino_servicio: Optional[datetime] = None
 
+
 class TicketCreate(TicketBase):
-    pass
+    id_managing_user: int
+    id_status: int
+    id_type: int
+    id_category: int
+    id_priority: int
+    id_customer: Optional[int] = None
+    user_id: Optional[int] = None
+
 
 class TicketUpdate(TicketBase):
-    pass
+    id_managing_user: Optional[int] = None
+    id_status: Optional[int] = None
+    id_type: Optional[int] = None
+    id_category: Optional[int] = None
+    id_priority: Optional[int] = None
+    id_customer: Optional[int] = None
+    user_id: Optional[int] = None
 
 class TicketInDBBase(TicketBase):
     id: int

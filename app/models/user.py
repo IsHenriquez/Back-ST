@@ -1,12 +1,14 @@
-from sqlalchemy import Column, Integer, String, Date, Boolean, ForeignKey, DateTime
+from sqlalchemy import Column, Integer, String, Date, Boolean, ForeignKey, DateTime, BigInteger
 from sqlalchemy.orm import relationship
 from app.core.database import Base
-import datetime
+from typing import Optional
+from datetime import datetime
+from pydantic import BaseModel
 
 class User(Base):
     __tablename__ = "users"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(BigInteger, primary_key=True, index=True)
     active = Column(Boolean, default=True)
     id_user_type = Column(Integer, nullable=True)
     id_vehicle = Column(Integer, nullable=True)
@@ -21,7 +23,17 @@ class User(Base):
     email_verified_at = Column(DateTime, nullable=True)
     password = Column(String(255), nullable=True)
     remember_token = Column(String(100), nullable=True)
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    tickets = relationship("Ticket", back_populates="user")
+    tickets_managing = relationship(
+        "Ticket",
+        foreign_keys="[Ticket.id_managing_user]",
+        back_populates="managing_user"
+    )
+    
+    tickets_in_charge = relationship(
+        "Ticket",
+        foreign_keys="[Ticket.user_id]",
+        back_populates="user"
+    )

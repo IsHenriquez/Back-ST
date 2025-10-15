@@ -27,10 +27,10 @@ class Ticket(Base):
 
     id_managing_user = Column(BigInteger, ForeignKey("users.id"), nullable=False)
     user_id = Column(BigInteger, ForeignKey("users.id"), nullable=True)
-    id_status = Column(Integer, ForeignKey("status.id"), nullable=True)
-    id_priority = Column(Integer, ForeignKey("priority.id"), nullable=True)
-    id_type = Column(Integer, ForeignKey("type.id"), nullable=True)
-    id_category = Column(Integer, ForeignKey("category.id"), nullable=True)
+    id_status = Column(Integer, ForeignKey("tickets_status.id"), nullable=True)
+    id_priority = Column(Integer, ForeignKey("tickets_priority.id"), nullable=True)
+    id_type = Column(Integer, ForeignKey("tickets_type.id"), nullable=True)
+    id_category = Column(Integer, ForeignKey("tickets_category.id"), nullable=True)
 
     managing_user = relationship("User", foreign_keys=[id_managing_user], back_populates="tickets_managing")
     user = relationship("User", foreign_keys=[user_id], back_populates="tickets_in_charge")

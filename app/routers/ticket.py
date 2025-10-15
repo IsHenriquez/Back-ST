@@ -5,6 +5,7 @@ import json
 import urllib.parse
 from app.schemas.ticket import TicketCreate, TicketUpdate
 from app.schemas.ticket import Ticket as TicketSchema
+from app.models.ticket import Ticket as TicketModel
 from app.crud.ticket import (
 get_ticket, 
 get_tickets, 

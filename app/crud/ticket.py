@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 from app.models.ticket import Ticket
-from sqlalchemy import inspect
+from sqlalchemy import inspect, or_, and_
 from app.schemas.ticket import TicketCreate, TicketUpdate
 import json, urllib.parse, re
 
@@ -38,6 +38,8 @@ def delete_ticket(db: Session, ticket_id: int):
         db.commit()
     return db_ticket
 
+
+
 def get_tickets_with_filter(db: Session, filters: list, skip: int = 0, limit: int = 10):
     query = db.query(Ticket)
     mapper = inspect(Ticket)
@@ -47,17 +49,32 @@ def get_tickets_with_filter(db: Session, filters: list, skip: int = 0, limit: in
         prop = f.get("property")
         value = f.get("value")
 
-        # Validar que la propiedad exista en el modelo
         if prop not in mapper.attrs.keys():
             continue
 
-        # Obtener tipo de columna para convertir valor
-        col_type = mapper.columns[prop].type.python_type
+        column = getattr(Ticket, prop)
 
-        # Convertir el valor al tipo correcto (maneja int, float, bool, str)
+        # Nuevo: operador IN
+        if op and op.lower() == "in":
+            # asegúrate de que value sea lista/tupla
+            if not isinstance(value, (list, tuple, set)):
+                value = [value]
+            # casteo básico según tipo de columna
+            pytype = mapper.columns[prop].type.python_type
+            casted = []
+            for v in value:
+                try:
+                    casted.append(pytype(v))
+                except Exception:
+                    casted.append(v)
+            query = query.filter(column.in_(casted))
+            continue
+
+        # Resto operadores (=, !=, >, <)
+        # Convertir valor al tipo correcto para operadores escalares
+        col_type = mapper.columns[prop].type.python_type
         try:
             if col_type == bool:
-                # Convierte valores tipo bool comunes
                 if isinstance(value, str):
                     value = value.lower() in ("true", "1", "t")
                 else:
@@ -65,11 +82,7 @@ def get_tickets_with_filter(db: Session, filters: list, skip: int = 0, limit: in
             else:
                 value = col_type(value)
         except Exception:
-            # Si no puede convertir, mantener el valor original
             pass
-
-        # Aplicar filtro según operador
-        column = getattr(Ticket, prop)
 
         if op == "=":
             query = query.filter(column == value)
@@ -79,9 +92,9 @@ def get_tickets_with_filter(db: Session, filters: list, skip: int = 0, limit: in
             query = query.filter(column > value)
         elif op == "<":
             query = query.filter(column < value)
-        # Agregar otros operadores si necesitás
 
     return query.offset(skip).limit(limit).all()
+
 
 def parse_filter_param(raw: str):
     # 1) Si viene vacío o null

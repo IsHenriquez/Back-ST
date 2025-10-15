@@ -53,13 +53,22 @@ ID_STATUS_TERMINADO = 3
 @router.get("/mine", response_model=List[TicketSchema])
 def read_my_tickets(
     user_id: int = Query(..., gt=0),
-    # Solo aceptamos active|terminated (dejamos compat con 'assigned' y 'resolved')
+    # aceptamos active|terminated; mantenemos compat con assigned|resolved
     status: Optional[str] = Query(None, pattern="^(active|terminated|assigned|resolved)$"),
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db)
 ):
-    # Normalización para compatibilidad
+    """
+    Lista tickets del técnico (user_id).
+    - status=active      -> ID_STATUS_ACTIVO
+    - status=terminated  -> ID_STATUS_TERMINADO
+    Compat:
+    - status=assigned -> active
+    - status=resolved -> terminated
+
+    Si NO viene status (vista "Todos"), se excluyen los pendientes.
+    """
     if status == "assigned":
         status = "active"
     elif status == "resolved":
@@ -71,9 +80,13 @@ def read_my_tickets(
         q = q.where(TicketModel.id_status == ID_STATUS_ACTIVO)
     elif status == "terminated":
         q = q.where(TicketModel.id_status == ID_STATUS_TERMINADO)
+    else:
+        # "Todos": solo activos + terminados (NO pendientes)
+        q = q.where(TicketModel.id_status.in_([ID_STATUS_ACTIVO, ID_STATUS_TERMINADO]))
 
     return (q.order_by(TicketModel.created_at.desc())
              .offset(skip).limit(limit).all() or [])
+
 
 
 @router.put("/{ticket_id}/resolve", response_model=TicketSchema)

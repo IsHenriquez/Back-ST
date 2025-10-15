@@ -7,5 +7,6 @@ python-dotenv
 pytest
 httpx
 pymysql
+mysqlclient
 passlib[bcrypt]
 email-validator

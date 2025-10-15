@@ -14,9 +14,15 @@ class UserBase(BaseModel):
     active: Optional[bool] = True
     id_user_type: int
 
-class UserCreate(UserBase):
-    id_user_type: int  # Ahora obligatorio
-    password: str
+class UserCreate(BaseModel):
+    name: str
+    last_name: str
+    email: EmailStr
+    phone: Optional[str] = None
+    identification_number: Optional[str] = None
+    id_user_type: int
+    active: Optional[bool] = True
+    password: Optional[str] = None  # <-- Opcional
 
 class UserUpdate(UserBase):
     password: Optional[str] = None

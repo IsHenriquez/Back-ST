@@ -5,6 +5,7 @@ from typing import List
 from app.schemas.user import User, UserCreate, UserUpdate
 from app.crud.user import get_user, get_users, create_user, update_user, delete_user
 from app.core.database import get_db
+from app.models.user import User
 
 router = APIRouter(
     prefix="/users",

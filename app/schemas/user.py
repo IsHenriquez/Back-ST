@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, ConfigDict
 from typing import Optional
 from datetime import date, datetime
 
@@ -38,6 +38,15 @@ class UserResponse(BaseModel):
     model_config = {
         "from_attributes": True
     }
+
+class UserOut(BaseModel):
+    id: int
+    name: str
+    last_name: str | None = None
+    email: str
+    id_user_type: int
+
+    model_config = ConfigDict(from_attributes=True)
 
 class User(UserInDBBase):
     pass

@@ -35,8 +35,9 @@ class UserResponse(BaseModel):
     email: EmailStr
     id_user_type: int
 
-    class Config:
-        orm_mode = True
+    model_config = {
+        "from_attributes": True
+    }
 
 class User(UserInDBBase):
     pass

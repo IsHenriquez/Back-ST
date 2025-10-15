@@ -10,3 +10,4 @@ pymysql
 mysqlclient
 passlib[bcrypt]
 email-validator
+PyJWT

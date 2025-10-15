@@ -45,58 +45,59 @@ def read_tickets(
         return tickets or []
     return get_tickets(db, skip=skip, limit=limit) or []
 
-# ======================================================
-# Mis tickets (por técnico) + resolver
-# PUESTO ANTES de rutas dinámicas para evitar 422
-# ======================================================
 
-# AJUSTA estos IDs a los reales en tu tabla tickets_status
-ID_STATUS_PENDIENTE = 1   # "Pendiente/Asignado" según su uso actual
-ID_STATUS_ACTIVO    = 2   # "En curso/Activo"
-ID_STATUS_TERMINADO = 3   # "Terminado/Resuelto"
+
+ID_STATUS_ACTIVO    = 2   
+ID_STATUS_TERMINADO = 3   
 
 @router.get("/mine", response_model=List[TicketSchema])
 def read_my_tickets(
     user_id: int = Query(..., gt=0),
-    # En Pydantic v2 usar "pattern"; si usas v1, cambia a "regex"
-    status: Optional[str] = Query(None, pattern="^(assigned|pending|resolved)$"),
+    # aceptamos active|terminated; mantenemos compat con assigned|resolved
+    status: Optional[str] = Query(None, pattern="^(active|terminated|assigned|resolved)$"),
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db)
 ):
     """
-    Lista tickets del técnico (user_id). Filtro opcional por estado:
-    - status=assigned -> ID_STATUS_PENDIENTE
-    - status=pending  -> ID_STATUS_ACTIVO
-    - status=resolved -> ID_STATUS_TERMINADO
+    Lista tickets del técnico (user_id).
+    - status=active      -> ID_STATUS_ACTIVO
+    - status=terminated  -> ID_STATUS_TERMINADO
+    Compat:
+    - status=assigned -> active
+    - status=resolved -> terminated
+
+    Si NO viene status (vista "Todos"), se excluyen los pendientes.
     """
+    if status == "assigned":
+        status = "active"
+    elif status == "resolved":
+        status = "terminated"
+
     q = db.query(TicketModel).where(TicketModel.user_id == user_id)
 
-    if status == "assigned":
-        q = q.where(TicketModel.id_status == ID_STATUS_PENDIENTE)
-    elif status == "pending":
+    if status == "active":
         q = q.where(TicketModel.id_status == ID_STATUS_ACTIVO)
-    elif status == "resolved":
+    elif status == "terminated":
         q = q.where(TicketModel.id_status == ID_STATUS_TERMINADO)
+    else:
+        # "Todos": solo activos + terminados (NO pendientes)
+        q = q.where(TicketModel.id_status.in_([ID_STATUS_ACTIVO, ID_STATUS_TERMINADO]))
 
-    return q.order_by(TicketModel.created_at.desc()).offset(skip).limit(limit).all() or []
+    return (q.order_by(TicketModel.created_at.desc())
+             .offset(skip).limit(limit).all() or [])
+
+
 
 @router.put("/{ticket_id}/resolve", response_model=TicketSchema)
 def resolve_ticket(ticket_id: int, db: Session = Depends(get_db)):
-    """
-    Marca ticket como TERMINADO y setea fecha_termino_servicio si está NULL.
-    """
     obj = db.query(TicketModel).filter(TicketModel.id == ticket_id).first()
     if not obj:
         raise HTTPException(status_code=404, detail="Ticket not found")
-
     obj.id_status = ID_STATUS_TERMINADO
     if getattr(obj, "fecha_termino_servicio", None) is None:
         obj.fecha_termino_servicio = datetime.utcnow()
-
-    db.add(obj)
-    db.commit()
-    db.refresh(obj)
+    db.add(obj); db.commit(); db.refresh(obj)
     return obj
 
 # ======================================================

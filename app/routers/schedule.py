@@ -8,30 +8,34 @@ from app.models.ticket import Ticket  # ajusta import si tu ruta difiere
 
 router = APIRouter(prefix="/schedule", tags=["schedule"])
 
-# ----- Límites del día -----
-# Usa UTC porque Railway/MySQL normalmente guarda en UTC.
-# Si tu BD está en hora local, cambia utcnow() por now().
-def day_bounds():
-    start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+# ====== IDs de estado (ajusta si tus valores son otros) ======
+ID_STATUS_ACTIVO    = 2   # tickets asignados/activos para el técnico
+ID_STATUS_TERMINADO = 3   # tickets resueltos/terminados
+
+# ====== Día de HOY (HORA LOCAL). Si tu BD guarda UTC, cambia now() por utcnow() ======
+def day_bounds_local():
+    start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
     end = start + timedelta(days=1)
     return start, end
 
 @router.get("/today")
 def schedule_today(user_id: int = Query(..., gt=0), db: Session = Depends(get_db)):
     """
-    Visitas de HOY del técnico (solo ACTIVAS):
-    - fecha_realizar_servicio ∈ HOY
-    - fecha_termino_servicio IS NULL
-    - orden por fecha_realizar_servicio
+    Visitas de HOY del técnico:
+    - SOLO tickets Activos (id_status = ID_STATUS_ACTIVO)
+    - fecha_realizar_servicio dentro de HOY (local)
+    - EXCLUYE terminados (fecha_termino_servicio IS NULL)
+    - Ordenados por fecha_realizar_servicio
     """
-    start, end = day_bounds()
+    start, end = day_bounds_local()
 
     qs = (
         db.query(Ticket)
         .filter(Ticket.user_id == user_id)
+        .filter(Ticket.id_status == ID_STATUS_ACTIVO)
+        .filter(Ticket.fecha_termino_servicio.is_(None))
         .filter(Ticket.fecha_realizar_servicio >= start,
                 Ticket.fecha_realizar_servicio < end)
-        .filter(Ticket.fecha_termino_servicio.is_(None))
         .order_by(Ticket.fecha_realizar_servicio.asc())
     )
 
@@ -47,28 +51,31 @@ def schedule_today(user_id: int = Query(..., gt=0), db: Session = Depends(get_db
 @router.get("/summary/today")
 def schedule_summary_today(user_id: int = Query(..., gt=0), db: Session = Depends(get_db)):
     """
-    Jornada de HOY por técnico (independiente de IDs de estado):
-    - Activos hoy     = fecha_realizar_servicio ∈ HOY  y fecha_termino_servicio IS NULL
-    - Terminados hoy  = fecha_termino_servicio ∈ HOY
+    Jornada de HOY por técnico (local):
+    - Activos hoy     := id_status = ACTIVO  AND fecha_realizar_servicio ∈ HOY AND fecha_termino_servicio IS NULL
+    - Terminados hoy  := id_status = TERMINADO AND fecha_termino_servicio ∈ HOY
     """
-    start, end = day_bounds()
+    start, end = day_bounds_local()
 
     activos_hoy = db.query(func.count(Ticket.id)) \
         .filter(Ticket.user_id == user_id) \
+        .filter(Ticket.id_status == ID_STATUS_ACTIVO) \
+        .filter(Ticket.fecha_termino_servicio.is_(None)) \
         .filter(Ticket.fecha_realizar_servicio >= start,
                 Ticket.fecha_realizar_servicio < end) \
-        .filter(Ticket.fecha_termino_servicio.is_(None)) \
         .scalar() or 0
 
     terminados_hoy = db.query(func.count(Ticket.id)) \
         .filter(Ticket.user_id == user_id) \
+        .filter(Ticket.id_status == ID_STATUS_TERMINADO) \
         .filter(Ticket.fecha_termino_servicio >= start,
                 Ticket.fecha_termino_servicio < end) \
         .scalar() or 0
 
+    # El front usa estas claves; en UI se muestran como "Activos" y "Terminados"
     return {
-        "assignedToday": int(activos_hoy),     # el front lo muestra como "Activos"
-        "resolvedToday": int(terminados_hoy),  # el front lo muestra como "Terminados"
+        "assignedToday": int(activos_hoy),
+        "resolvedToday": int(terminados_hoy),
         "pendingToday":  max(int(activos_hoy) - int(terminados_hoy), 0)
     }
 

@@ -12,6 +12,7 @@ class UserBase(BaseModel):
     phone: Optional[str] = None
     email: Optional[EmailStr] = None
     active: Optional[bool] = True
+    id_user_type: int
 
 class UserCreate(UserBase):
     id_user_type: int  # Ahora obligatorio

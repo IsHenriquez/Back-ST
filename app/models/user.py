@@ -1,5 +1,5 @@
 from sqlalchemy import Column, Integer, String, Date, Boolean, ForeignKey, DateTime, BigInteger
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, Mapped, mapped_column
 from app.core.database import Base
 from typing import Optional
 from datetime import datetime
@@ -25,6 +25,8 @@ class User(Base):
     remember_token = Column(String(100), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    id_user_type: Mapped[int] = mapped_column(Integer, ForeignKey("user_types.id"), nullable=False)
 
     tickets_managing = relationship(
         "Ticket",

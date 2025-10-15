@@ -12,7 +12,7 @@ router = APIRouter(
 )
 
 @router.get("/", response_model=List[UserType])
-def read_user_types(skip: int = 0, limit: int = 10, db: Session = Depends(get_db)):
+def read_user_types(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     return get_user_types(db, skip=skip, limit=limit)
 
 @router.post("/", response_model=UserType)

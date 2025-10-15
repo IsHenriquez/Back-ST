@@ -30,3 +30,14 @@ def delete_ticket(db: Session, ticket_id: int):
         db.delete(db_ticket)
         db.commit()
     return db_ticket
+
+def get_tickets_with_filter(db: Session, filters: list, skip: int = 0, limit: int = 10):
+    query = db.query(Ticket)  # Ajusta si Ticket es tu modelo SQLAlchemy
+    for f in filters:
+        op = f.get("operator")
+        prop = f.get("property")
+        value = f.get("value")
+        if op == "=":
+            query = query.filter(getattr(Ticket, prop) == value)
+        # Agrega más operadores si necesitas
+    return query.offset(skip).limit(limit).all()

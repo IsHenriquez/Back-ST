@@ -106,21 +106,27 @@ def resolve_ticket(ticket_id: int, db: Session = Depends(get_db)):
 
 @router.post("/", response_model=Ticket, status_code=status.HTTP_201_CREATED)
 def create_new_ticket(ticket: TicketCreate, db: Session = Depends(get_db)):
-    # Si el front ya manda id_managing_user y user_id, respétalos; si no, aplica defaults
+    """
+    Si el ticket viene asignado a un técnico (user_id), se crea como ACTIVO (2)
+    y con fecha_realizar_servicio = ahora si no vino.
+    Nunca setea fecha_termino_servicio al crear.
+    """
+    has_tech = bool(ticket.user_id)
+
     safe_ticket = ticket.copy(update={
-        "id_managing_user": ticket.id_managing_user or ticket.user_id,  # o levanta 400 si quieres forzar
+        "id_managing_user": ticket.id_managing_user or ticket.user_id,
         "user_id": ticket.user_id or ticket.id_managing_user,
-        "id_status": ticket.id_status or 1,
-        "fecha_realizar_servicio": ticket.fecha_realizar_servicio or datetime.utcnow(),
+        "id_status": (ID_STATUS_ACTIVO if has_tech else (ticket.id_status or 1)),
+        "fecha_realizar_servicio": ticket.fecha_realizar_servicio or (datetime.utcnow() if has_tech else None),
         "fecha_termino_servicio": None,
     })
 
-    # Validación explícita si ninguna de las dos llegó
     if not safe_ticket.id_managing_user:
         raise HTTPException(status_code=400, detail="id_managing_user requerido")
 
-    obj = create_ticket(db, safe_ticket)  # pasa Pydantic, no dict
+    obj = create_ticket(db, safe_ticket)
     return obj
+
 
 @router.get("/{ticket_id}", response_model=TicketSchema)
 def read_ticket(ticket_id: int, db: Session = Depends(get_db)):

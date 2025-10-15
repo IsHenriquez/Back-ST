@@ -4,7 +4,14 @@ from typing import List, Optional
 import json
 import urllib.parse
 from app.schemas.ticket import Ticket, TicketCreate, TicketUpdate
-from app.crud.ticket import get_ticket, get_tickets, get_tickets_with_filter, create_ticket, update_ticket, delete_ticket, parse_filter_param
+from app.crud.ticket import (
+get_ticket, 
+get_tickets, 
+get_tickets_with_filter, 
+create_ticket, 
+update_ticket, 
+delete_ticket, 
+parse_filter_param)
 from app.core.database import get_db
 
 router = APIRouter(

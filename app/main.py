@@ -4,8 +4,6 @@ from fastapi.middleware.cors import CORSMiddleware
 app = FastAPI()
 
 from app.models.ticket import Ticket
-from app.models.catalogs import TicketStatus, TicketPriority, TicketType, TicketCategory
-# si usás archivos separados en lugar de catalogs.py, importa cada uno aquí
 
 app.include_router(ticket.router)
 app.include_router(user.router)

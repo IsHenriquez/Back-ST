@@ -39,3 +39,17 @@ def delete_existing_vehicle(vehicle_id: int, db: Session = Depends(get_db)):
     if db_vehicle is None:
         raise HTTPException(status_code=404, detail="Vehicle not found")
     return db_vehicle
+
+
+@router.get("/assigned")
+def vehicle_assigned(user_id: int = Query(..., gt=0), db: Session = Depends(get_db)):
+    # ajusta JOIN según tu modelo/relación
+    v = (
+        db.query(Vehicle)
+        .join(UserVehicle, UserVehicle.vehicle_id == Vehicle.id)
+        .filter(UserVehicle.user_id == user_id, UserVehicle.is_active == True)
+        .first()
+    )
+    if not v: return None
+    return {"plate": v.plate, "model": v.model, "status": v.status or "unknown"}
+

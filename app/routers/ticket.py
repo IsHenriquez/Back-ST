@@ -103,7 +103,7 @@ def resolve_ticket(ticket_id: int, db: Session = Depends(get_db)):
 # CREAR / OBTENER / ACTUALIZAR / ELIMINAR (existente)
 # ======================================================
 
-@router.post("/", response_model=TicketModel, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=TicketSchema, status_code=status.HTTP_201_CREATED)
 def create_new_ticket(
     ticket: TicketCreate,
     db: Session = Depends(get_db),

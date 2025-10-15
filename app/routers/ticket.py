@@ -7,7 +7,7 @@ import urllib.parse
 from datetime import datetime
 
 # Schemas y modelos
-from app.schemas.ticket import TicketCreate, TicketUpdate
+from app.schemas.ticket import TicketCreate, TicketUpdate, Ticket
 from app.schemas.ticket import Ticket as TicketSchema
 from app.models.ticket import Ticket as TicketModel
 
@@ -103,34 +103,23 @@ def resolve_ticket(ticket_id: int, db: Session = Depends(get_db)):
 # CREAR / OBTENER / ACTUALIZAR / ELIMINAR (existente)
 # ======================================================
 
-@router.post("/", response_model=TicketSchema, status_code=status.HTTP_201_CREATED)
-def create_new_ticket(
-    ticket: TicketCreate,
-    db: Session = Depends(get_db),
-):
-    vals = ticket.model_dump(exclude_unset=True)
+@router.post("/", response_model=Ticket, status_code=status.HTTP_201_CREATED)
+def create_new_ticket(ticket: TicketCreate, db: Session = Depends(get_db)):
+    # Si el front ya manda id_managing_user y user_id, respétalos; si no, aplica defaults
+    safe_ticket = ticket.copy(update={
+        "id_managing_user": ticket.id_managing_user or ticket.user_id,  # o levanta 400 si quieres forzar
+        "user_id": ticket.user_id or ticket.id_managing_user,
+        "id_status": ticket.id_status or 1,
+        "fecha_realizar_servicio": ticket.fecha_realizar_servicio or datetime.utcnow(),
+        "fecha_termino_servicio": None,
+    })
 
-    # Si front ya los manda, no los toques; si faltan, aplica fallback seguro:
-    if vals.get("id_managing_user") is None:
-        # último recurso: usa user_id si vino
-        if vals.get("user_id") is not None:
-            vals["id_managing_user"] = vals["user_id"]
-        else:
-            raise HTTPException(status_code=400, detail="id_managing_user requerido")
+    # Validación explícita si ninguna de las dos llegó
+    if not safe_ticket.id_managing_user:
+        raise HTTPException(status_code=400, detail="id_managing_user requerido")
 
-    if vals.get("user_id") is None:
-        # si tu modelo exige user_id, usa el mismo manager como solicitante
-        vals["user_id"] = vals["id_managing_user"]
-
-    vals.setdefault("id_status", 1)
-    vals.setdefault("fecha_realizar_servicio", datetime.utcnow())
-    vals["fecha_termino_servicio"] = None
-
-    obj = create_ticket(db, vals)
-    if not obj:
-        raise HTTPException(status_code=400, detail="No se pudo crear el ticket")
+    obj = create_ticket(db, safe_ticket)  # pasa Pydantic, no dict
     return obj
-
 
 @router.get("/{ticket_id}", response_model=TicketSchema)
 def read_ticket(ticket_id: int, db: Session = Depends(get_db)):

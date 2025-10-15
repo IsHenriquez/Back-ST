@@ -10,7 +10,7 @@ from app.schemas.ticket import TicketCreate, TicketUpdate
 from app.schemas.ticket import Ticket as TicketSchema
 from app.models.ticket import Ticket as TicketModel
 
-# CRUD existente (lo sigues usando tal cual)
+# CRUD existente (se mantiene)
 from app.crud.ticket import (
     get_ticket,
     get_tickets,
@@ -27,7 +27,9 @@ router = APIRouter(
     tags=["tickets"]
 )
 
-# ---- LISTAR TODOS (con filtro opcional) ----
+# ======================================================
+# LISTAR TODOS (con filtro opcional)  -> SE MANTIENE
+# ======================================================
 @router.get("/", response_model=List[TicketSchema])
 def read_tickets(
     skip: int = 0,
@@ -44,9 +46,66 @@ def read_tickets(
         tickets = get_tickets_with_filter(db, filters, skip=skip, limit=limit)
         return tickets or []
     return get_tickets(db, skip=skip, limit=limit) or []
-    
-# ---- CREAR ----
-@router.post("/", response_model=TicketSchema)  # <- TicketSchema
+
+# ======================================================
+# Mis tickets (por técnico) + resolver
+# PUESTO ANTES de rutas dinámicas para evitar 422
+# ======================================================
+
+# AJUSTA estos IDs a los reales en tu tabla tickets_status
+ID_STATUS_PENDIENTE = 1   # "Pendiente/Asignado" según su uso actual
+ID_STATUS_ACTIVO    = 2   # "En curso/Activo"
+ID_STATUS_TERMINADO = 3   # "Terminado/Resuelto"
+
+@router.get("/mine", response_model=List[TicketSchema])
+def read_my_tickets(
+    user_id: int = Query(..., gt=0),
+    # En Pydantic v2 usar "pattern"; si usas v1, cambia a "regex"
+    status: Optional[str] = Query(None, pattern="^(assigned|pending|resolved)$"),
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db)
+):
+    """
+    Lista tickets del técnico (user_id). Filtro opcional por estado:
+    - status=assigned -> ID_STATUS_PENDIENTE
+    - status=pending  -> ID_STATUS_ACTIVO
+    - status=resolved -> ID_STATUS_TERMINADO
+    """
+    q = db.query(TicketModel).where(TicketModel.user_id == user_id)
+
+    if status == "assigned":
+        q = q.where(TicketModel.id_status == ID_STATUS_PENDIENTE)
+    elif status == "pending":
+        q = q.where(TicketModel.id_status == ID_STATUS_ACTIVO)
+    elif status == "resolved":
+        q = q.where(TicketModel.id_status == ID_STATUS_TERMINADO)
+
+    return q.order_by(TicketModel.created_at.desc()).offset(skip).limit(limit).all() or []
+
+@router.put("/{ticket_id}/resolve", response_model=TicketSchema)
+def resolve_ticket(ticket_id: int, db: Session = Depends(get_db)):
+    """
+    Marca ticket como TERMINADO y setea fecha_termino_servicio si está NULL.
+    """
+    obj = db.query(TicketModel).filter(TicketModel.id == ticket_id).first()
+    if not obj:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+
+    obj.id_status = ID_STATUS_TERMINADO
+    if getattr(obj, "fecha_termino_servicio", None) is None:
+        obj.fecha_termino_servicio = datetime.utcnow()
+
+    db.add(obj)
+    db.commit()
+    db.refresh(obj)
+    return obj
+
+# ======================================================
+# CREAR / OBTENER / ACTUALIZAR / ELIMINAR (existente)
+# ======================================================
+
+@router.post("/", response_model=TicketSchema)
 def create_new_ticket(ticket: TicketCreate, db: Session = Depends(get_db)):
     """
     Normaliza ticket de creación:
@@ -59,59 +118,23 @@ def create_new_ticket(ticket: TicketCreate, db: Session = Depends(get_db)):
     })
     return create_ticket(db, safe_payload)
 
-# ---- OBTENER POR ID ----
-@router.get("/{ticket_id}", response_model=TicketSchema)  # <- TicketSchema
+@router.get("/{ticket_id}", response_model=TicketSchema)
 def read_ticket(ticket_id: int, db: Session = Depends(get_db)):
     db_ticket = get_ticket(db, ticket_id)
     if db_ticket is None:
         raise HTTPException(status_code=404, detail="Ticket not found")
     return db_ticket
 
-# ---- ACTUALIZAR ----
-@router.put("/{ticket_id}", response_model=TicketSchema)  # <- TicketSchema
+@router.put("/{ticket_id}", response_model=TicketSchema)
 def update_existing_ticket(ticket_id: int, ticket: TicketUpdate, db: Session = Depends(get_db)):
     db_ticket = update_ticket(db, ticket_id, ticket)
     if db_ticket is None:
         raise HTTPException(status_code=404, detail="Ticket not found")
     return db_ticket
 
-# ---- ELIMINAR ----
-@router.delete("/{ticket_id}", response_model=TicketSchema)  # <- TicketSchema
+@router.delete("/{ticket_id}", response_model=TicketSchema)
 def delete_existing_ticket(ticket_id: int, db: Session = Depends(get_db)):
     db_ticket = delete_ticket(db, ticket_id)
     if db_ticket is None:
         raise HTTPException(status_code=404, detail="Ticket not found")
     return db_ticket
-
-
-ID_STATUS_PENDIENTE = 1   
-ID_STATUS_ACTIVO    = 2   
-ID_STATUS_TERMINADO = 3   
-
-@router.get("/mine", response_model=List[TicketSchema])
-def read_my_tickets(
-    user_id: int = Query(..., gt=0),
-    status: Optional[str] = Query(None, pattern="^(assigned|pending|resolved)$"),
-    skip: int = 0,
-    limit: int = 100,
-    db: Session = Depends(get_db)
-):
-    q = db.query(TicketModel).where(TicketModel.user_id == user_id)
-    if status == "assigned":
-        q = q.where(TicketModel.id_status == ID_STATUS_PENDIENTE)
-    elif status == "pending":
-        q = q.where(TicketModel.id_status == ID_STATUS_ACTIVO)
-    elif status == "resolved":
-        q = q.where(TicketModel.id_status == ID_STATUS_TERMINADO)
-    return q.order_by(TicketModel.created_at.desc()).offset(skip).limit(limit).all() or []
-
-@router.put("/{ticket_id}/resolve", response_model=TicketSchema)
-def resolve_ticket(ticket_id: int, db: Session = Depends(get_db)):
-    obj = db.query(TicketModel).filter(TicketModel.id == ticket_id).first()
-    if not obj:
-        raise HTTPException(status_code=404, detail="Ticket not found")
-    obj.id_status = ID_STATUS_TERMINADO
-    if getattr(obj, "fecha_termino_servicio", None) is None:
-        obj.fecha_termino_servicio = datetime.utcnow()
-    db.add(obj); db.commit(); db.refresh(obj)
-    return obj

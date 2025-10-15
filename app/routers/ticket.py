@@ -13,6 +13,7 @@ update_ticket,
 delete_ticket, 
 parse_filter_param)
 from app.core.database import get_db
+from datetime import datetime    
 
 router = APIRouter(
     prefix="/tickets",
@@ -42,7 +43,17 @@ def read_tickets(
 
 @router.post("/", response_model=Ticket)
 def create_new_ticket(ticket: TicketCreate, db: Session = Depends(get_db)):
-    return create_ticket(db, ticket)
+    """
+    Normaliza ticket de creación:
+    - fecha_realizar_servicio: si no viene, usa ahora (UTC)
+    - fecha_termino_servicio: siempre None al crear
+    - (opcional) id_status: si tu back tiene un estado "Asignado/Pendiente", puedes forzarlo aquí
+    """
+    safe_payload = ticket.copy(update={
+        "fecha_realizar_servicio": ticket.fecha_realizar_servicio or datetime.utcnow(),
+        "fecha_termino_servicio": None,
+    })
+    return create_ticket(db, safe_payload)
 
 @router.get("/{ticket_id}", response_model=Ticket)
 def read_ticket(ticket_id: int, db: Session = Depends(get_db)):

@@ -24,17 +24,25 @@ app.include_router(schedule.router)
 
 # Lista explícita de orígenes que pueden llamar a tu API
 ALLOWED_ORIGINS = [
-    "http://localhost:5173",      # Vite
-    "http://localhost:3000",      # Alternativa local
-    "https://smarttechnical.up.railway.app",       # dominio de prod del front
+    "http://localhost",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:3000",
+    "capacitor://localhost",
+    "ionic://localhost",
+    "https://smarttechnical.up.railway.app",  # tu front en prod (si aplica)
 ]
+
+# Regex permisivo para orígenes locales
+ALLOW_ORIGIN_REGEX = r"^(https?://localhost(:\d+)?|http://127\.0\.0\.1(:\d+)?|capacitor://localhost|ionic://localhost|https://smarttechnical\.up\.railway\.app)$"
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS,                         # no uses "*" si allow_credentials=True
-    allow_credentials=True,                                # en true si usas cookies/sesiones
+    allow_origins=ALLOWED_ORIGINS,
+    allow_origin_regex=ALLOW_ORIGIN_REGEX,   # <- clave para apps híbridas
+    allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type", "X-Requested-With", "Accept"],
-    expose_headers=["Content-Disposition"],                # opcional
-    max_age=600,                                           # cache del preflight
+    expose_headers=["Content-Disposition"],
+    max_age=600,
 )

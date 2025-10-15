@@ -8,28 +8,30 @@ from app.models.ticket import Ticket  # ajusta import al tuyo
 
 router = APIRouter(prefix="/schedule", tags=["schedule"])
 
+def day_bounds_local(now: datetime):
+    # Usa hora LOCAL del servidor; si tu BD guarda UTC, cambia a datetime.utcnow()
+    start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    end = start + timedelta(days=1)
+    return start, end
+
 def today_bounds_utc(now: datetime):
     start = datetime(now.year, now.month, now.day, 0, 0, 0)
     end = start + timedelta(days=1)
     return start, end
 
 @router.get("/today")
-def schedule_today(
-    user_id: int = Query(..., gt=0),
-    db: Session = Depends(get_db)
-):
+def schedule_today(user_id: int = Query(..., gt=0), db: Session = Depends(get_db)):
     """
-    Visitas de HOY del técnico (tickets NO resueltos),
-    ordenados por fecha_realizar_servicio asc.
+    Visitas de HOY del técnico: SOLO tickets ACTIVO (id_status=2)
+    con fecha_realizar_servicio dentro de HOY, ordenados por esa fecha.
     """
-    now = datetime.utcnow()
-    start, end = today_bounds_utc(now)
+    start, end = day_bounds_local(datetime.now())
 
     qs = (db.query(Ticket)
             .filter(Ticket.user_id == user_id)
+            .filter(Ticket.id_status == ID_STATUS_ACTIVO)
             .filter(Ticket.fecha_realizar_servicio >= start,
                     Ticket.fecha_realizar_servicio < end)
-            .filter(Ticket.fecha_termino_servicio.is_(None))  # <- EXCLUYE resueltos
             .order_by(Ticket.fecha_realizar_servicio.asc()))
 
     return [{
@@ -42,39 +44,34 @@ def schedule_today(
     } for t in qs.all()]
 
 @router.get("/summary/today")
-def schedule_summary_today(
-    user_id: int = Query(..., gt=0),
-    db: Session = Depends(get_db)
-):
+def schedule_summary_today(user_id: int = Query(..., gt=0), db: Session = Depends(get_db)):
     """
     Jornada de HOY por técnico:
-    - assignedToday: tickets con ventana de servicio HOY
-    - resolvedToday: tickets terminados HOY
-    - pendingToday: assignedToday - resolvedToday (>=0)
+    - assignedToday := ACTIVO hoy (id_status=2 & fecha_realizar_servicio ∈ HOY)
+    - resolvedToday := TERMINADO hoy (id_status=3 & fecha_termino_servicio ∈ HOY)
+    - pendingToday  := max(assignedToday - resolvedToday, 0)  (si aún muestras 'pendiente' visual)
     """
-    now = datetime.utcnow()
-    start, end = today_bounds_utc(now)
+    start, end = day_bounds_local(datetime.now())
 
-    assigned = db.query(func.count(Ticket.id))\
+    activos_hoy = db.query(func.count(Ticket.id))\
         .filter(Ticket.user_id == user_id)\
+        .filter(Ticket.id_status == ID_STATUS_ACTIVO)\
         .filter(Ticket.fecha_realizar_servicio >= start,
                 Ticket.fecha_realizar_servicio < end)\
         .scalar() or 0
 
-    resolved = db.query(func.count(Ticket.id))\
+    terminados_hoy = db.query(func.count(Ticket.id))\
         .filter(Ticket.user_id == user_id)\
+        .filter(Ticket.id_status == ID_STATUS_TERMINADO)\
         .filter(Ticket.fecha_termino_servicio >= start,
                 Ticket.fecha_termino_servicio < end)\
         .scalar() or 0
 
-    pending = assigned - resolved
-    if pending < 0:
-        pending = 0
-
+    # Mantengo las CLAVES esperadas por el front (aunque el UI diga "Activos/Terminados")
     return {
-        "assignedToday": int(assigned),
-        "resolvedToday": int(resolved),
-        "pendingToday": int(pending)
+        "assignedToday": int(activos_hoy),    # → se muestra como "Activos"
+        "resolvedToday": int(terminados_hoy), # → se muestra como "Terminados"
+        "pendingToday":  max(int(activos_hoy) - int(terminados_hoy), 0)
     }
 
 @router.get("/last")

@@ -1,3 +1,4 @@
+# app/schemas/user_type.py
 from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
@@ -10,15 +11,12 @@ class UserTypeCreate(UserTypeBase):
     pass
 
 class UserTypeUpdate(UserTypeBase):
-    pass
+    name: Optional[str] = None
 
-class UserTypeInDBBase(UserTypeBase):
+class UserType(UserTypeBase):
     id: int
-    created_at: datetime
-    updated_at: datetime
-
+    created_at: Optional[datetime] = None  # <-- Haz esto opcional
+    updated_at: Optional[datetime] = None  # <-- Haz esto opcional
+    
     class Config:
-        orm_mode = True
-
-class UserType(UserTypeInDBBase):
-    pass
+        from_attributes = True

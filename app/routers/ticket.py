@@ -4,7 +4,7 @@ from typing import List, Optional
 import json
 import urllib.parse
 from app.schemas.ticket import Ticket, TicketCreate, TicketUpdate
-from app.crud.ticket import get_ticket, get_tickets, get_tickets_with_filter, create_ticket, update_ticket, delete_ticket
+from app.crud.ticket import get_ticket, get_tickets, get_tickets_with_filter, create_ticket, update_ticket, delete_ticket, parse_filter_param
 from app.core.database import get_db
 
 router = APIRouter(
@@ -20,23 +20,16 @@ def read_tickets(
     db: Session = Depends(get_db)
 ):
     if filter:
-        print("Filtro recibido sin decodificar:", filter)
-        import urllib.parse, json
-        try:
-            filter_decoded = urllib.parse.unquote(filter)
-            print("Filtro luego de unquote:", filter_decoded)
-            filters = json.loads(filter_decoded)
-        except Exception as e1:
-            print("Error al decodificar filtro:", e1)
-            try:
-                filters = json.loads(filter)
-            except Exception as e2:
-                print("Error second al cargar JSON:", e2)
-                raise HTTPException(status_code=400, detail="Formato de filtro inválido")
+        print(f"Valor recibido en filter: {filter}")
+        filters = parse_filter_param(filter)
+        if filters is None:
+            raise HTTPException(status_code=400, detail="Formato de filtro inválido")
         tickets = get_tickets_with_filter(db, filters, skip=skip, limit=limit)
     else:
         tickets = get_tickets(db, skip=skip, limit=limit)
     return tickets or []
+
+
 
 @router.post("/", response_model=Ticket)
 def create_new_ticket(ticket: TicketCreate, db: Session = Depends(get_db)):

@@ -2,6 +2,7 @@ from sqlalchemy.orm import Session
 from app.models.ticket import Ticket
 from sqlalchemy import inspect
 from app.schemas.ticket import TicketCreate, TicketUpdate
+import json, urllib.parse
 
 def get_ticket(db: Session, ticket_id: int):
     return db.query(Ticket).filter(Ticket.id == ticket_id).first()
@@ -76,3 +77,19 @@ def get_tickets_with_filter(db: Session, filters: list, skip: int = 0, limit: in
         # Agregar otros operadores si necesitás
 
     return query.offset(skip).limit(limit).all()
+
+def parse_filter_param(filter):
+    tries = [
+        lambda f: json.loads(f),
+        lambda f: json.loads(urllib.parse.unquote(f)),
+        lambda f: json.loads(f.replace("'", '"')),
+        lambda f: json.loads(urllib.parse.unquote(f).replace("'", '"'))
+    ]
+    for fn in tries:
+        try:
+            filters = fn(filter)
+            if isinstance(filters, list):
+                return filters
+        except Exception as e:
+            continue
+    return None

@@ -11,6 +11,10 @@ class TicketBase(BaseModel):
     fecha_ingreso_solicitud: Optional[datetime] = None
     fecha_realizar_servicio: Optional[datetime] = None
     fecha_termino_servicio: Optional[datetime] = None
+    id_status: Optional[int] = None
+    id_priority: Optional[int] = None
+    id_type: Optional[int] = None
+    id_category: Optional[int] = None
 
 
 class TicketCreate(TicketBase):
@@ -40,5 +44,10 @@ class TicketInDBBase(TicketBase):
     class Config:
         orm_mode = True
 
-class Ticket(TicketInDBBase):
-    pass
+class Ticket(TicketBase):
+    id: int
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True  # pydantic v2

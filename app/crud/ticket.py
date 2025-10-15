@@ -4,8 +4,8 @@ from sqlalchemy import inspect
 from app.schemas.ticket import TicketCreate, TicketUpdate
 import json, urllib.parse, re
 
-def get_ticket(db: Session, ticket_id: int):
-    return db.query(Ticket).filter(Ticket.id == ticket_id).first()
+def get_tickets(db: Session, skip=0, limit=100):
+    return db.query(Ticket).offset(skip).limit(limit).all()
 
 def get_tickets(db: Session, skip: int = 0, limit: int = 100):
     return db.query(Ticket).offset(skip).limit(limit).all()

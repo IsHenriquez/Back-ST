@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
 import json
-
+import urllib.parse
 from app.schemas.ticket import Ticket, TicketCreate, TicketUpdate
 from app.crud.ticket import get_ticket, get_tickets, get_tickets_with_filter, create_ticket, update_ticket, delete_ticket
 from app.core.database import get_db
@@ -16,15 +16,22 @@ router = APIRouter(
 def read_tickets(
     skip: int = 0,
     limit: int = 10,
-    filter: Optional[str] = Query(None),   # <-- acepta param filter tipo string JSON
+    filter: Optional[str] = Query(None),
     db: Session = Depends(get_db)
 ):
     if filter:
         try:
-            filters = json.loads(filter)
+            # Intenta decodificar primero (si viene codificado)
+            decoded = urllib.parse.unquote(filter)
+            filters = json.loads(decoded)
             return get_tickets_with_filter(db, filters, skip=skip, limit=limit)
         except Exception:
-            raise HTTPException(status_code=400, detail="Formato de filtro inválido")
+            try:
+                # Si falla, prueba decodificar directo
+                filters = json.loads(filter)
+                return get_tickets_with_filter(db, filters, skip=skip, limit=limit)
+            except Exception:
+                raise HTTPException(status_code=400, detail="Formato de filtro inválido")
     return get_tickets(db, skip=skip, limit=limit)
 
 @router.post("/", response_model=Ticket)

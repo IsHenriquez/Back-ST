@@ -40,13 +40,9 @@ class UserResponse(BaseModel):
         "from_attributes": True
     }
 
-class UserOut(BaseModel):
-    id: int
-    name: str
-    last_name: str | None = None
-    email: str
-    id_user_type: int
 
+class UserOut(UserBase):
+    id: int
     model_config = ConfigDict(from_attributes=True)
 
 class User(UserInDBBase):

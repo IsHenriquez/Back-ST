@@ -1,9 +1,6 @@
 from fastapi import FastAPI
 from app.routers import ticket, schedule, user, tickets_priority, customer, tickets_status, announcement, nps, position, ticket_category, ticket_type, user_type, vehicle_brand, vehicle_model, vehicle, auth
 from fastapi.middleware.cors import CORSMiddleware
-from app.core.database import Base
-from app.models.ticket import Ticket
-from app.models.catalogs import TicketStatus, TicketPriority, TicketType, TicketCategory
 app = FastAPI()
 
 app.include_router(ticket.router)

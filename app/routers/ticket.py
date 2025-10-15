@@ -75,3 +75,37 @@ def delete_existing_ticket(ticket_id: int, db: Session = Depends(get_db)):
     if db_ticket is None:
         raise HTTPException(status_code=404, detail="Ticket not found")
     return db_ticket
+
+
+
+ID_STATUS_PENDIENTE = 1
+ID_STATUS_ACTIVO = 2
+ID_STATUS_TERMINADO = 3
+
+@router.get("/mine", response_model=List[TicketSchema])
+def read_my_tickets(
+    user_id: int = Query(..., gt=0),
+    status: Optional[str] = Query(None, regex="^(assigned|pending|resolved)$"),
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db)
+):
+    q = db.query(TicketModel).where(TicketModel.user_id == user_id)
+    if status == "assigned":
+        q = q.where(TicketModel.id_status == ID_STATUS_PENDIENTE)
+    elif status == "pending":
+        q = q.where(TicketModel.id_status == ID_STATUS_ACTIVO)
+    elif status == "resolved":
+        q = q.where(TicketModel.id_status == ID_STATUS_TERMINADO)
+    return q.order_by(TicketModel.created_at.desc()).offset(skip).limit(limit).all() or []
+
+@router.put("/{ticket_id}/resolve", response_model=TicketSchema)
+def resolve_ticket(ticket_id: int, db: Session = Depends(get_db)):
+    obj = db.query(TicketModel).filter(TicketModel.id == ticket_id).first()
+    if not obj:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+    obj.id_status = ID_STATUS_RESUELTO
+    if getattr(obj, "fecha_termino_servicio", None) is None:
+        obj.fecha_termino_servicio = datetime.utcnow()
+    db.add(obj); db.commit(); db.refresh(obj)
+    return obj

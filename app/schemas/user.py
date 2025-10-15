@@ -29,5 +29,14 @@ class UserInDBBase(UserBase):
     class Config:
         orm_mode = True
 
+class UserResponse(BaseModel):
+    id: int
+    name: str
+    email: EmailStr
+    id_user_type: int
+
+    class Config:
+        orm_mode = True
+
 class User(UserInDBBase):
     pass

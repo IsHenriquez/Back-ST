@@ -2,7 +2,7 @@ from sqlalchemy.orm import Session
 from app.models.ticket import Ticket
 from sqlalchemy import inspect
 from app.schemas.ticket import TicketCreate, TicketUpdate
-import json, urllib.parse
+import json, urllib.parse, re
 
 def get_ticket(db: Session, ticket_id: int):
     return db.query(Ticket).filter(Ticket.id == ticket_id).first()
@@ -78,18 +78,46 @@ def get_tickets_with_filter(db: Session, filters: list, skip: int = 0, limit: in
 
     return query.offset(skip).limit(limit).all()
 
-def parse_filter_param(filter):
-    tries = [
-        lambda f: json.loads(f),
-        lambda f: json.loads(urllib.parse.unquote(f)),
-        lambda f: json.loads(f.replace("'", '"')),
-        lambda f: json.loads(urllib.parse.unquote(f).replace("'", '"'))
-    ]
-    for fn in tries:
+def parse_filter_param(raw: str):
+    # 1) Si viene vacío o null
+    if raw is None or raw == "":
+        return []
+
+    candidates = []
+
+    # Original
+    candidates.append(raw)
+
+    # Unquote una vez
+    try:
+        candidates.append(urllib.parse.unquote(raw))
+    except Exception:
+        pass
+
+    # Unquote dos veces (algunos clientes doble-encodean)
+    try:
+        candidates.append(urllib.parse.unquote(urllib.parse.unquote(raw)))
+    except Exception:
+        pass
+
+    # Reemplazo de comillas simples por dobles
+    for s in list(candidates):
+        if "'" in s and '"' not in s:
+            candidates.append(s.replace("'", '"'))
+
+    # Quitar un trailing apostrophe o comilla perdida al final
+    candidates = [re.sub(r"[\"']$", "", s.strip()) for s in candidates]
+
+    # Quitar envolturas tipo filter=... si el cliente pasó todo el query como string
+    candidates = [re.sub(r"^filter=", "", s, flags=re.I) for s in candidates]
+
+    # Intentar parsear como JSON lista
+    for s in candidates:
         try:
-            filters = fn(filter)
-            if isinstance(filters, list):
-                return filters
-        except Exception as e:
+            data = json.loads(s)
+            if isinstance(data, list):
+                return data
+        except Exception:
             continue
+
     return None

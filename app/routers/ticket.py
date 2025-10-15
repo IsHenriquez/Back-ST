@@ -19,15 +19,17 @@ def read_tickets(
     filter: Optional[str] = Query(None),
     db: Session = Depends(get_db)
 ):
-    if filter:
-        print(f"Valor recibido en filter: {filter}")
+    if filter is not None:
+        print("RAW filter recibido:", repr(filter))
         filters = parse_filter_param(filter)
+        print("Parsed filters:", filters)
         if filters is None:
+            # Como fallback extremo, devuelve lista vacía para no romper el front
+            # o cambia por raise si preferís ver el error.
             raise HTTPException(status_code=400, detail="Formato de filtro inválido")
         tickets = get_tickets_with_filter(db, filters, skip=skip, limit=limit)
-    else:
-        tickets = get_tickets(db, skip=skip, limit=limit)
-    return tickets or []
+        return tickets or []
+    return get_tickets(db, skip=skip, limit=limit) or []
 
 
 

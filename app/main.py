@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from app.routers import ticket, user, tickets_priority, customer, tickets_status, announcement, nps, position, ticket_category, ticket_type, user_type, vehicle_brand, vehicle_model, vehicle
+from app.routers import ticket, user, tickets_priority, customer, tickets_status, announcement, nps, position, ticket_category, ticket_type, user_type, vehicle_brand, vehicle_model, vehicle, auth
 
 app = FastAPI()
 
@@ -17,3 +17,4 @@ app.include_router(user_type.router)
 app.include_router(vehicle_brand.router)
 app.include_router(vehicle_model.router)
 app.include_router(vehicle.router)
+app.include_router(auth.router)

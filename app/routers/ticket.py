@@ -20,19 +20,23 @@ def read_tickets(
     db: Session = Depends(get_db)
 ):
     if filter:
+        print("Filtro recibido sin decodificar:", filter)
+        import urllib.parse, json
         try:
-            # Intenta decodificar primero (si viene codificado)
-            decoded = urllib.parse.unquote(filter)
-            filters = json.loads(decoded)
-            return get_tickets_with_filter(db, filters, skip=skip, limit=limit)
-        except Exception:
+            filter_decoded = urllib.parse.unquote(filter)
+            print("Filtro luego de unquote:", filter_decoded)
+            filters = json.loads(filter_decoded)
+        except Exception as e1:
+            print("Error al decodificar filtro:", e1)
             try:
-                # Si falla, prueba decodificar directo
                 filters = json.loads(filter)
-                return get_tickets_with_filter(db, filters, skip=skip, limit=limit)
-            except Exception:
+            except Exception as e2:
+                print("Error second al cargar JSON:", e2)
                 raise HTTPException(status_code=400, detail="Formato de filtro inválido")
-    return get_tickets(db, skip=skip, limit=limit)
+        tickets = get_tickets_with_filter(db, filters, skip=skip, limit=limit)
+    else:
+        tickets = get_tickets(db, skip=skip, limit=limit)
+    return tickets or []
 
 @router.post("/", response_model=Ticket)
 def create_new_ticket(ticket: TicketCreate, db: Session = Depends(get_db)):

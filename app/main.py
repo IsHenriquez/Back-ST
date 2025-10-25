@@ -1,7 +1,11 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Response
 from app.routers import ticket, schedule, user, tickets_priority, customer, tickets_status, announcement, nps, position, ticket_category, ticket_type, user_type, vehicle_brand, vehicle_model, vehicle, auth
 from fastapi.middleware.cors import CORSMiddleware
 app = FastAPI()
+
+from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST
+from starlette.middleware.base import BaseHTTPMiddleware
+import time
 
 from app.models.ticket import Ticket
 
@@ -46,3 +50,30 @@ app.add_middleware(
     expose_headers=["Content-Disposition"],
     max_age=600,
 )
+
+
+# Métricas
+REQUEST_COUNT = Counter(
+    "http_requests_total", "Total de requests", ["method", "endpoint", "http_status"]
+)
+REQ_LATENCY = Histogram(
+    "http_request_duration_seconds", "Latencia de requests", ["method", "endpoint"]
+)
+
+class MetricsMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        start = time.perf_counter()
+        response = await call_next(request)
+        endpoint = request.url.path
+        method = request.method
+        REQ_LATENCY.labels(method, endpoint).observe(time.perf_counter() - start)
+        REQUEST_COUNT.labels(method, endpoint, str(response.status_code)).inc()
+        return response
+
+# middleware de métricas
+app.add_middleware(MetricsMiddleware)
+
+# Endpoint para Prometheus
+@app.get("/metrics")
+def metrics():
+    return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)

@@ -12,3 +12,4 @@ passlib[bcrypt]
 email-validator
 PyJWT
 python-multipart
+prometheus-client==0.20.0

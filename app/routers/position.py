@@ -37,7 +37,9 @@ async def get_positions():
                 "id_user": pos[1],
                 "address": pos[2],
                 "latitude": pos[3],
-                "longitude": pos[4]
+                "longitude": pos[4],
+                "created_at": pos[5],
+                "updated_at": pos[6]
             })
         
         return {"success": True, "data": result}
@@ -61,7 +63,7 @@ async def create_position(position: PositionCreate):
         updated_at = position.updated_at or now
         
         query = """
-            INSERT INTO positions (id_user, address, latitude, longitude)
+            INSERT INTO positions (id_user, address, latitude, longitude, created_at, updated_at)
             VALUES (%s, %s, %s, %s, %s, %s)
         """
         
@@ -69,7 +71,9 @@ async def create_position(position: PositionCreate):
             position.id_user,
             position.address,
             position.latitude,
-            position.longitude
+            position.longitude,
+            created_at,
+            updated_at
         ))
         
         conn.commit()

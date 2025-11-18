@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
 
-router = APIRouter()
+router = APIRouter(prefix="/position", tags=["position"])
 
 # ⬅️ Modelo para validar datos de entrada
 class PositionCreate(BaseModel):
@@ -15,7 +15,7 @@ class PositionCreate(BaseModel):
     updated_at: Optional[str] = None
 
 # ⬅️ GET - Obtener todas las posiciones
-@router.get("/position")
+@router.get("/")
 async def get_positions():
     try:
         # Aquí debes conectarte a tu BD y hacer SELECT
@@ -24,7 +24,7 @@ async def get_positions():
         
         conn = get_db()
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM position ORDER BY updated_at DESC")
+        cursor.execute("SELECT * FROM positions ORDER BY updated_at DESC")
         positions = cursor.fetchall()
         
         # Convertir a diccionario
@@ -47,7 +47,7 @@ async def get_positions():
         raise HTTPException(status_code=500, detail=str(e))
 
 # ⬅️ POST - Crear nueva posición
-@router.post("/position")
+@router.post("/")
 async def create_position(position: PositionCreate):
     try:
         from app.core.database import get_db
@@ -61,7 +61,7 @@ async def create_position(position: PositionCreate):
         updated_at = position.updated_at or now
         
         query = """
-            INSERT INTO position (id_user, address, latitude, longitude, created_at, updated_at)
+            INSERT INTO positions (id_user, address, latitude, longitude, created_at, updated_at)
             VALUES (%s, %s, %s, %s, %s, %s)
         """
         

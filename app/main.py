@@ -79,3 +79,11 @@ app.add_middleware(MetricsMiddleware)
 @app.get("/metrics")
 def metrics():
     return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
+
+# Endpoint de salud para monitoreo (usado por Blackbox/Grafana)
+@app.get("/health", tags=["monitoring"])
+async def health():
+    """
+    Devuelve 200 si la API está levantada.
+    """
+    return {"status": "ok"}

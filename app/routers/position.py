@@ -5,6 +5,7 @@ from datetime import datetime
 
 router = APIRouter(prefix="/position", tags=["position"])
 
+
 # ⬅️ Modelo para validar datos de entrada
 class PositionCreate(BaseModel):
     id_user: int

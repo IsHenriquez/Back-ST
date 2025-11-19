@@ -12,7 +12,7 @@ router = APIRouter(
 
 @router.get("/", response_model=List[Position])
 def read_positions(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    return get_all_positions(db, skip=skip, limit=limit)
+    return get_positions(db, skip=skip, limit=limit)
 
 @router.get("/{position_id}", response_model=Position)
 def read_position_by_id(position_id: int, db: Session = Depends(get_db)):

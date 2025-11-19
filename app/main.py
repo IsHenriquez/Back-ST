@@ -37,7 +37,8 @@ ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "capacitor://localhost",
     "ionic://localhost",
-    "https://smarttechnical.up.railway.app",  # tu front en prod (si aplica)
+    "https://smarttechnical.up.railway.app/position",
+    "https://smarttechnical.up.railway.app",# tu front en prod (si aplica)
 ]
 
 # Regex permisivo para orígenes locales

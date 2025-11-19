@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
 from app.schemas.position import Position, PositionCreate
-from app.crud.position import get_all_positions, get_position, create_position, update_position, delete_position
+from app.crud.position import get_positions, get_position, create_position, update_position, delete_position
 from app.core.database import get_db
 
 router = APIRouter(

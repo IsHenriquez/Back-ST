@@ -1,90 +1,41 @@
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
-from typing import Optional
-from datetime import datetime
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+from typing import List
+from app.schemas.position import Position, PositionCreate
+from app.crud.position import get_all_positions, get_position, create_position, update_position, delete_position
+from app.core.database import get_db
 
-router = APIRouter(prefix="/position", tags=["position"])
+router = APIRouter(
+    prefix="/position",
+    tags=["position"]
+)
 
+@router.get("/", response_model=List[Position])
+def read_positions(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    return get_all_positions(db, skip=skip, limit=limit)
 
+@router.get("/{position_id}", response_model=Position)
+def read_position_by_id(position_id: int, db: Session = Depends(get_db)):
+    db_position = get_position(db, position_id)
+    if db_position is None:
+        raise HTTPException(status_code=404, detail="Position not found")
+    return db_position
 
-# ⬅️ Modelo para validar datos de entrada
-class PositionCreate(BaseModel):
-    id_user: int
-    address: str
-    latitude: float
-    longitude: float
-    created_at: Optional[str] = None
-    updated_at: Optional[str] = None
+@router.post("/", response_model=Position)
+def create_new_position(position: PositionCreate, db: Session = Depends(get_db)):
+    return create_position(db, position)
 
-# ⬅️ GET - Obtener todas las posiciones
-@router.get("/")
-async def get_positions():
-    try:
-        # Aquí debes conectarte a tu BD y hacer SELECT
-        # Ejemplo con tu conexión existente:
-        from app.core.database import get_db  # O como tengas tu conexión
-        
-        conn = get_db()
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM positions ORDER BY updated_at DESC")
-        positions = cursor.fetchall()
-        
-        # Convertir a diccionario
-        result = []
-        for pos in positions:
-            result.append({
-                "id": pos[0],
-                "id_user": pos[1],
-                "address": pos[2],
-                "latitude": pos[3],
-                "longitude": pos[4],
-                "created_at": pos[5],
-                "updated_at": pos[6]
-            })
-        
-        return {"success": True, "data": result}
-    
-    except Exception as e:
-        print(f"Error en GET /position: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+@router.put("/{position_id}", response_model=Position)
+def update_existing_position(position_id: int, position: PositionCreate, db: Session = Depends(get_db)):
+    db_position = update_position(db, position_id, position)
+    if db_position is None:
+        raise HTTPException(status_code=404, detail="Position not found")
+    return db_position
 
-# ⬅️ POST - Crear nueva posición
-@router.post("/")
-async def create_position(position: PositionCreate):
-    try:
-        from app.core.database import get_db
-        
-        conn = get_db()
-        cursor = conn.cursor()
-        
-        # Usar timestamp actual si no se proporciona
-        now = datetime.now().isoformat()
-        created_at = position.created_at or now
-        updated_at = position.updated_at or now
-        
-        query = """
-            INSERT INTO positions (id_user, address, latitude, longitude, created_at, updated_at)
-            VALUES (%s, %s, %s, %s, %s, %s)
-        """
-        
-        cursor.execute(query, (
-            position.id_user,
-            position.address,
-            position.latitude,
-            position.longitude,
-            created_at,
-            updated_at
-        ))
-        
-        conn.commit()
-        position_id = cursor.lastrowid
-        
-        return {
-            "success": True,
-            "message": "Posición creada correctamente",
-            "data": {"id": position_id, **position.dict()}
-        }
-    
-    except Exception as e:
-        print(f"Error en POST /position: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+@router.delete("/{position_id}", response_model=Position)
+def delete_existing_position(position_id: int, db: Session = Depends(get_db)):
+    db_position = delete_position(db, position_id)
+    if db_position is None:
+        raise HTTPException(status_code=404, detail="Position not found")
+    return db_position
+
